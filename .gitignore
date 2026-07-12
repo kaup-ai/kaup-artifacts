@@ -1,0 +1,11 @@
+*.dmg
+*.msi
+*.nsis
+*.AppImage
+*.deb
+*.rpm
+*.sig
+*.tar.gz
+latest.json
+*.tmp
+.DS_Store
