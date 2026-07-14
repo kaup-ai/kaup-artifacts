@@ -46,7 +46,10 @@ desktop 启动 → 查 `https://github.com/kaup-ai/kaup-artifacts/releases/lates
 ### CLI（IT 共享服务器）
 1. `wget https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v<ver>/kaup-linux-amd64`
 2. `chmod +x kaup-linux-amd64 && sudo mv kaup-linux-amd64 /opt/kaup/kaup`
-3. `hermes mcp add kaup-cli --command /opt/kaup/kaup`（注册刚部署的二进制为 MCP server）
+3. 使 `kaup` 可被 shell 直接调用（**CLI-first 非 MCP**：MCP 已 W5-1b 删除，Hermes terminal 工具经 shell 调 `kaup <cmd>`）：
+   - Linux（Phase-1）：`sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup`
+   - macOS（FU-C1-3 起）：`sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup`；未签名二进制需去 Gatekeeper 隔离 `sudo xattr -d com.apple.quarantine /opt/kaup/kaup`
+   - Windows（FU-C1-3 起）：`kaup-windows-amd64.exe` 重命名 `kaup.exe`，放入 PATH 目录（如 `C:\Program Files\kaup\`）并加系统 PATH
 4. 升级：重复 1-2（替换二进制），Hermes 重启即用新版
 
 ## 决策依据
