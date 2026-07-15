@@ -1,64 +1,81 @@
 # kaup-artifacts
 
-kaup **public 发布通道** —— desktop 安装包 + CLI 二进制 + auto-updater manifest 的公开发布仓。
+kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳定下载点，以及 Tauri auto-updater 所需的更新清单（`latest.json`）。
 
-## 为什么需要这个仓
+## Releases
 
-kaup 源码仓（kaup-core / kaup-frontend / kaup-design）都是 **private** 保护知识产权。但 Tauri auto-updater 客户端要**匿名访问** updater manifest（latest.json）+ 更新包（.dmg/.msi/.AppImage），private 仓做不到。kaup-artifacts 是 public，供客户端零认证拉取。
+本仓只承载 [GitHub Releases](https://github.com/kaup-ai/kaup-artifacts/releases)；源代码、二进制均不进 git。
 
-## 仓内容
+### Desktop
 
-两条独立 release 线，各自版本号、各自 CI 发布：
+面向最终业务人员使用的桌面客户端，每人一台。
 
-### 1. desktop（业务人员，每人 1 台）
-- release 命名：`kaup-desktop-v<ver>`（由 kaup-frontend CI 跨仓 push）
-- assets：macOS `.dmg` + `.sig` / Ubuntu `.AppImage` + `.deb` + `.sig` / Windows `.msi` + `.nsis` + `.sig`
-- `latest.json`（Tauri updater manifest：各平台当前版本 + 签名 + 下载 URL）
+- Release tag：`kaup-desktop-v<version>`
+- 产物：macOS `.dmg` / Ubuntu `.AppImage` + `.deb` / Windows `.msi` + `.nsis`，均附 `.sig` 签名
+- 同时发布 `latest.json`（Tauri updater 清单：各平台当前版本号、签名与下载 URL）
 
-### 2. CLI（IT 共享服务器，1 台/公司）
-- release 命名：`kaup-cli-v<ver>`（由 kaup-core CI 跨仓 push）
-- assets：Nuitka 编译的单文件二进制 `kaup-<os>-<arch>`（Phase-1: `kaup-linux-amd64` 必须；mac/win 随后 FU-C1-3）
-- 无 latest.json（服务器端工具，IT deliberate 升级，无 auto-updater D6）
-- 源码仓 kaup-core **私有**；公开的只有 Nuitka 编译产物（二进制，非 .py 源码）→ 满足"不开源"
+### CLI
 
-> git 本身只放 README + .gitignore（无源码、无敏感信息）。二进制进 Releases attachments，不进 git。
+面向共享服务器，由 IT 统一部署，一台一公司。
 
-## 安全模型（不靠 repo 访问控制：desktop 靠 Tauri 签名验签，CLI 靠源信任 + checksum 核对）
+- Release tag：`kaup-cli-v<version>`
+- 产物：单文件二进制 `kaup-<os>-<arch>`（Linux/macOS 无后缀，Windows 为 `.exe`）
+- 不发布 `latest.json`：服务端工具，IT deliberate 升级，无 auto-updater
 
-- `TAURI_SIGNING_PUBLIC_KEY` 内置 desktop 客户端（tauri.conf.json）
-- 每个更新包 `.sig` 签名（CI 用 `TAURI_SIGNING_PRIVATE_KEY` 签）
-- 客户端拉更新 → 验签 → 通过才替换
-- 即使有人 fork/复制本仓产物，没有私钥签不出客户端接受的更新
-- 同 kaup "KAUP_API_KEY 应用层认证" 哲学（不依赖网络层）
+## 安装
 
-### CLI（kaup-cli-v<ver>）
+### Desktop
 
-- 不走 Tauri 签名（CLI 非 Tauri app）
-- Phase-1：IT 信任 GitHub Release 源（kaup-ai/kaup-artifacts 官方）+ 可选 SHA256 checksum 核对
-- Phase-2（FU-C1-5）：加 cosign/GPG 签名 + 强制 checksum，客户 verify 后部署
-- 源码保护：Nuitka 编译为原生二进制（.pyc 反编译弱保护，但满足"不公开 .py 源码"）
+前往 [Releases 页](https://github.com/kaup-ai/kaup-artifacts/releases?q=kaup-desktop) 下载与本机平台匹配的安装包，按系统提示安装即可。首次启动后，客户端会按内置的 updater 公钥定期检查本仓 Releases。
 
-## 客户端流程
+### CLI
 
-### desktop（业务人员）
-desktop 启动 → 查 `https://github.com/kaup-ai/kaup-artifacts/releases/latest/download/latest.json` → 对比版本 → 有新版下载 + 验签（TAURI_SIGNING_PUBLIC_KEY）→ 替换重启。
+以 Linux AMD64 为例（其余平台命令见下表）：
 
-### CLI（IT 共享服务器）
-1. `wget https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v<ver>/kaup-linux-amd64`
-2. `chmod +x kaup-linux-amd64 && sudo mv kaup-linux-amd64 /opt/kaup/kaup`
-3. 使 `kaup` 可被 shell 直接调用（**CLI-first 非 MCP**：MCP 已 W5-1b 删除，Hermes terminal 工具经 shell 调 `kaup <cmd>`）：
-   - Linux（Phase-1）：`sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup`
-   - macOS（FU-C1-3 起）：`sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup`；未签名二进制需去 Gatekeeper 隔离 `sudo xattr -d com.apple.quarantine /opt/kaup/kaup`
-   - Windows（FU-C1-3 起）：`kaup-windows-amd64.exe` 重命名 `kaup.exe`，放入 PATH 目录（如 `C:\Program Files\kaup\`）并加系统 PATH
-4. 升级：重复 1-2（替换二进制），Hermes 重启即用新版
+```bash
+wget https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v<ver>/kaup-linux-amd64
+chmod +x kaup-linux-amd64
+sudo mv kaup-linux-amd64 /opt/kaup/kaup
+sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
+```
 
-## 决策依据
+按平台分别执行：
 
-- ADR-0026（D2 三仓体系 + D7 内置 updater + D9 kaup-artifacts 跨仓发布）
-- 首次安装下载链接：kaup-design 仓 ONBOARDING.md / 下载页指向本仓 Releases
+| 平台 | 二进制 | 安装路径 | 后续步骤 |
+|------|--------|----------|----------|
+| Linux | `kaup-linux-amd64` | `/usr/local/bin/kaup` | `sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup` |
+| macOS | `kaup-darwin-<arch>` | `/usr/local/bin/kaup` | 同上；首次运行需解除 Gatekeeper 隔离：`sudo xattr -d com.apple.quarantine /opt/kaup/kaup` |
+| Windows | `kaup-windows-amd64.exe` | `C:\Program Files\kaup\kaup.exe` | 将该目录加入系统 PATH |
 
-## 仓维护
+## 升级
 
-- 不要在本仓 commit 二进制（.dmg/.msi/.AppImage）——它们进 Releases attachments，不进 git
-- Releases 由 kaup-frontend CI 跨仓 push（KAUPT_ARTIFACTS_TOKEN = GitHub App token，W5-4 配）
-- 历史 Release 保留（updater 回滚 + 客户端版本溯源）
+### Desktop
+
+无需手动操作。客户端启动时检测新版本，下载并验签通过后自动替换；下次启动即生效。如需强制升级，从 [Releases 页](https://github.com/kaup-ai/kaup-artifacts/releases?q=kaup-desktop) 下载最新安装包重装即可。
+
+### CLI
+
+按上表重新执行"下载 → 移动 → 建符号链接"三步，覆盖旧二进制后重启调用方即生效。
+
+## 验签
+
+### Desktop
+
+每个更新包附带 `.sig` 签名文件。Tauri 客户端内置发布方公钥，下载完成后自动验签：签名不匹配则拒绝替换，从源头阻断伪造更新。fork / 镜像本仓的产物因无对应私钥，无法生成客户端接受的签名。
+
+如需手动验签（CI 或审计场景）：
+
+```bash
+# latest.json 示例（实际字段以 release 为准）
+# 客户端只信任内置公钥对应的签名；手动验签需要获取发布方公钥
+```
+
+### CLI
+
+当前阶段建议 IT 在部署前执行 SHA256 checksum 核对（Release 页每项资产下展示）。后续将提供 cosign / GPG 签名，部署脚本应 verify 后再替换。
+
+## 仓库维护
+
+- Releases 由上游 CI 在 tag 推送时自动创建，请勿在本仓直接 commit 二进制或 `latest.json`
+- 历史 Release 不删除，便于 updater 回滚与版本溯源
+- 仓库仅含本 README 与 `.gitignore`，无其他源码
