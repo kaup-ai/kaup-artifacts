@@ -9,3 +9,4 @@
 latest.json
 *.tmp
 .DS_Store
+.omc/
