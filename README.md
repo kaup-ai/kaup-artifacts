@@ -11,7 +11,7 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳
 面向最终业务人员使用的桌面客户端，每人一台。
 
 - Release tag：`kaup-desktop-v<version>`
-- 产物：macOS `.dmg` / Ubuntu `.AppImage` + `.deb` / Windows `.msi` + `.nsis`，均附 `.sig` 签名
+- 产物（2026-09-06 起仅两平台，设置菜单增强波次 D12 裁剪）：macOS `.dmg` + `.app.tar.gz` / Windows `.msi` + `.nsis`，updater 产物均附 `.sig` 签名
 - 同时发布 `latest.json`（Tauri updater 清单：各平台当前版本号、签名与下载 URL）
 
 ### CLI
@@ -19,8 +19,9 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳
 面向共享服务器，由 IT 统一部署，一台一公司。
 
 - Release tag：`kaup-cli-v<version>`
-- 产物：单文件二进制 `kaup-<os>-<arch>`（Linux/macOS 无后缀，Windows 为 `.exe`）
-- 不发布 `latest.json`：服务端工具，IT deliberate 升级，无 auto-updater
+- 产物（同 D12 裁剪）：单文件二进制 `kaup-<os>-<arch>`（macOS 无后缀，Windows 为 `.exe`），仅 macOS + Windows
+- Linux 需求不在 Release 提供：IT 在目标机经源码构建（`kaup-core` `scripts/build-cli.sh`，uname 自适应）
+- 不发布 `latest.json`：服务端工具，IT deliberate 升级，无 auto-updater；**发布固定不标 latest**（见下「仓库维护」）
 
 ## 安装
 
@@ -30,12 +31,12 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳
 
 ### CLI
 
-以 Linux AMD64 为例（其余平台命令见下表）：
+以 macOS ARM64 为例（其余平台命令见下表；Linux 经源码构建，不走 Release）：
 
 ```bash
-wget https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v<ver>/kaup-linux-amd64
-chmod +x kaup-linux-amd64
-sudo mv kaup-linux-amd64 /opt/kaup/kaup
+wget https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v<ver>/kaup-darwin-arm64
+chmod +x kaup-darwin-arm64
+sudo mv kaup-darwin-arm64 /opt/kaup/kaup
 sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 ```
 
@@ -43,7 +44,6 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 
 | 平台 | 二进制 | 安装路径 | 后续步骤 |
 |------|--------|----------|----------|
-| Linux | `kaup-linux-amd64` | `/usr/local/bin/kaup` | `sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup` |
 | macOS | `kaup-darwin-<arch>` | `/usr/local/bin/kaup` | 同上；首次运行需解除 Gatekeeper 隔离：`sudo xattr -d com.apple.quarantine /opt/kaup/kaup` |
 | Windows | `kaup-windows-amd64.exe` | `C:\Program Files\kaup\kaup.exe` | 将该目录加入系统 PATH |
 
@@ -51,7 +51,7 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 
 ### Desktop
 
-无需手动操作。客户端启动时检测新版本，下载并验签通过后自动替换；下次启动即生效。如需强制升级，从 [Releases 页](https://github.com/kaup-ai/kaup-artifacts/releases?q=kaup-desktop) 下载最新安装包重装即可。
+无需手动操作。客户端启动时静默检查更新，发现新版后在设置菜单「关于」面板提示（不打断工作）；用户确认下载并验签通过后，经「立即重启」完成替换。如需强制升级，从 [Releases 页](https://github.com/kaup-ai/kaup-artifacts/releases?q=kaup-desktop) 下载最新安装包重装即可。
 
 ### CLI
 
@@ -77,6 +77,7 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 ## 仓库维护
 
 - Releases 由上游 CI 在 tag 推送时自动创建，请勿在本仓直接 commit 二进制或 `latest.json`
+- **`releases/latest` 指针专属 desktop**（2026-09-06 约定，设置菜单增强波次 D13）：desktop updater endpoint 为 `releases/latest/download/latest.json`，依赖 latest 指针始终指向 desktop release——CLI 发布 CI 固定 `make_latest: false`，任何新 release 类目上线前必须先确认不抢占 latest 指针
 - 历史 Release 不删除，便于 updater 回滚与版本溯源
 - 仓库仅含本 README 与 `.gitignore`，无其他源码
 
