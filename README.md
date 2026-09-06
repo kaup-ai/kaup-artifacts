@@ -79,3 +79,7 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 - Releases 由上游 CI 在 tag 推送时自动创建，请勿在本仓直接 commit 二进制或 `latest.json`
 - 历史 Release 不删除，便于 updater 回滚与版本溯源
 - 仓库仅含本 README 与 `.gitignore`，无其他源码
+
+## License
+
+本仓及 Releases 分发的所有产物均为 Dalian Kaup Technology Co., Ltd. 的专有软件，版权归其所有，详见 [LICENSE](./LICENSE)。第三方依赖归因已内嵌于各产物（CLI exe / desktop 安装包）中。
