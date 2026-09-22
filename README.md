@@ -1,6 +1,6 @@
 # kaup-artifacts
 
-kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳定下载点，以及 Tauri auto-updater 所需的更新清单（`latest.json`）。
+kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳定下载点，以及 desktop auto-updater 与 CLI `kaup upgrade` 所需的更新清单（`latest.json`）。
 
 ## Releases
 
@@ -19,9 +19,9 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳
 面向共享服务器，由 IT 统一部署，一台一公司。
 
 - Release tag：`kaup-cli-v<version>`
-- 产物（同 D12 裁剪）：单文件二进制 `kaup-<os>-<arch>`（macOS 无后缀，Windows 为 `.exe`），仅 macOS + Windows
+- 产物（同 D12 裁剪）：单文件二进制 `kaup-v<version>-<os>-<arch>`（macOS 无后缀，Windows 为 `.exe`），仅 macOS（`darwin-arm64`）+ Windows（`windows-amd64`）
 - Linux 需求不在 Release 提供：IT 在目标机经源码构建（`kaup-core` `scripts/build-cli.sh`，uname 自适应）
-- 不发布 `latest.json`：服务端工具，IT deliberate 升级，无 auto-updater；**发布固定不标 latest**（见下「仓库维护」）
+- 同时发布 `latest.json` + `latest.json.sig`（minisign 签名，A4/2026-09-07）供 `kaup upgrade` 拉取；**无自动后台更新**，升级由 IT / 用户显式触发；**发布固定不标 latest**（见下「仓库维护」）
 
 ## 安装
 
@@ -34,9 +34,9 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳
 以 macOS ARM64 为例（其余平台命令见下表；Linux 经源码构建，不走 Release）：
 
 ```bash
-wget https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v<ver>/kaup-darwin-arm64
-chmod +x kaup-darwin-arm64
-sudo mv kaup-darwin-arm64 /opt/kaup/kaup
+wget https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v<ver>/kaup-v<ver>-darwin-arm64
+chmod +x kaup-v<ver>-darwin-arm64
+sudo mv kaup-v<ver>-darwin-arm64 /opt/kaup/kaup
 sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 ```
 
@@ -44,8 +44,8 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 
 | 平台 | 二进制 | 安装路径 | 后续步骤 |
 |------|--------|----------|----------|
-| macOS | `kaup-darwin-<arch>` | `/usr/local/bin/kaup` | 同上；首次运行需解除 Gatekeeper 隔离：`sudo xattr -d com.apple.quarantine /opt/kaup/kaup` |
-| Windows | `kaup-windows-amd64.exe` | `C:\Program Files\kaup\kaup.exe` | 将该目录加入系统 PATH |
+| macOS（`darwin-arm64`） | `kaup-v<ver>-darwin-arm64` | `/usr/local/bin/kaup` | 同上；首次运行需解除 Gatekeeper 隔离：`sudo xattr -d com.apple.quarantine /opt/kaup/kaup` |
+| Windows（`windows-amd64`） | `kaup-v<ver>-windows-amd64.exe` | `C:\Program Files\kaup\kaup.exe` | 将该目录加入系统 PATH |
 
 ## 升级
 
@@ -55,7 +55,7 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 
 ### CLI
 
-按上表重新执行"下载 → 移动 → 建符号链接"三步，覆盖旧二进制后重启调用方即生效。
+发布版可直接运行 `kaup upgrade`：从固定 tag `kaup-cli-latest` 拉 `latest.json` + `.sig`，minisign 验签通过后替换自身。手动「下载 → 移动 → 建符号链接」三步仍适用于源码 / Linux 构建的产物。
 
 ## 验签
 
@@ -72,14 +72,14 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 
 ### CLI
 
-当前阶段建议 IT 在部署前执行 SHA256 checksum 核对（Release 页每项资产下展示）。后续将提供 cosign / GPG 签名，部署脚本应 verify 后再替换。
+CLI 发布附带 minisign 签名的 `latest.json`（内含各平台 SHA256），`kaup upgrade` 自动验签通过后才替换。IT 手动部署时可据此核对资产完整性；源码构建产物不在 Release 链路内，完整性由构建方负责。
 
 ## 仓库维护
 
-- Releases 由上游 CI 在 tag 推送时自动创建，请勿在本仓直接 commit 二进制或 `latest.json`
-- **`releases/latest` 指针专属 desktop**（2026-09-06 约定，设置菜单增强波次 D13）：desktop updater endpoint 为 `releases/latest/download/latest.json`，依赖 latest 指针始终指向 desktop release——CLI 发布 CI 固定 `make_latest: false`，任何新 release 类目上线前必须先确认不抢占 latest 指针
+- Releases 由上游 CI 在 tag 推送时自动创建：CLI 走 `kaup-core/.github/workflows/release.yml`，desktop 走 `kaup-frontend/.github/workflows/release.yml`；请勿在本仓直接 commit 二进制或 `latest.json`
+- **desktop updater 走固定 tag，不依赖 `releases/latest`**（R3 / 2026-09-07 迁移）：endpoint 为 `releases/download/kaup-desktop-latest/latest.json`。CLI 发布 CI 仍固定 `make_latest: false`，使 `releases/latest` 指向 desktop 供人工浏览——这是浏览便利约定，已不是 updater 的依赖路径
 - 历史 Release 不删除，便于 updater 回滚与版本溯源
-- 仓库仅含本 README 与 `.gitignore`，无其他源码
+- 仓库无源码，仅含文档与配置：`README.md` / `LICENSE` / `AGENTS.md` / `.gitignore` / `docs/agents/`
 
 ## License
 
