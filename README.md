@@ -34,7 +34,7 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳
 **推荐：官方安装脚本** —— 把 CLI 装到自升级安装根 `~/.kaup/bin`（即 `$KAUP_HOME/bin`）。
 脚本取自 `kaup-core` 仓 `install/` 目录（`install.sh` / `install.ps1`）：
 
-- macOS / Linux：`sh install.sh`
+- macOS：`sh install.sh`（Linux 无 Release，见下「手动安装」）
 - Windows（PowerShell）：`powershell -ExecutionPolicy Bypass -File install.ps1`
 
 脚本拉固定 tag `kaup-cli-latest` 的 `latest.json` → **校 sha256** → 落
