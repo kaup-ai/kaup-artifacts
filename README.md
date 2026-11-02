@@ -1,6 +1,7 @@
 # kaup-artifacts
 
-kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳定下载点，以及 desktop auto-updater 与 CLI `kaup upgrade` 所需的更新清单（`latest.json`）。
+kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI standalone ZIP 的稳定下载点，
+以及 desktop auto-updater 与 CLI `kaup upgrade` 所需的更新清单（`latest.json`）。
 
 ## Releases
 
@@ -19,9 +20,14 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳
 面向共享服务器，由 IT 统一部署，一台一公司。
 
 - Release tag：`kaup-cli-v<version>`
-- 产物（同 D12 裁剪）：单文件二进制 `kaup-v<version>-<os>-<arch>`（macOS 无后缀，Windows 为 `.exe`），仅 macOS（`darwin-arm64`）+ Windows（`windows-amd64`）
-- Linux 需求不在 Release 提供：IT 在目标机经源码构建（`kaup-core` `scripts/build-cli.sh`，uname 自适应）
-- 同时发布 `latest.json` + `latest.json.sig`（minisign 签名，A4/2026-09-07）供 `kaup upgrade` 拉取；**无自动后台更新**，升级由 IT / 用户显式触发；**发布固定不标 latest**（见下「仓库维护」）
+- 产物（同 D12 裁剪）：`kaup-v<version>-{darwin-arm64,windows-amd64}.zip`。
+  ZIP 内含 Nuitka standalone runtime、stable launcher 与 `install.json`；不再发布可单独执行的
+  raw onefile 资产。
+- Linux 需求不在 Release 提供，且 v0.5.3 standalone 契约只覆盖 macOS arm64 与 Windows amd64。
+- 同时发布 `latest.json` + `latest.json.sig`。平台条目除 `url`/`sha256` 外还冻结
+  `artifact_kind`、`layout_version`、`build_id`、`payload_tree_sha256` 与
+  `launcher_protocol_version`；**无自动后台更新**，升级由 IT / 用户显式触发；
+  **发布固定不标 latest**（见下「仓库维护」）
 
 ## 安装
 
@@ -31,7 +37,14 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI 二进制的稳
 
 ### CLI
 
-**推荐：官方安装脚本** —— 把 CLI 装到自升级安装根 `~/.kaup/bin`（即 `$KAUP_HOME/bin`）。
+> **Transitional status (v0.5.3):** the current `install.sh` / `install.ps1` still implement
+> the retired raw-onefile bootstrap. The release workflow fails closed while either script
+> carries its `TRANSITIONAL:` marker, so these scripts must not be used to publish or install
+> a production v0.5.3 standalone release. The standalone clean-bootstrap installer is owned by
+> the installer child and must land first.
+
+The historical fixed-tag commands remain the eventual stable entry point once that installer
+child lands:
 
 macOS：
 
@@ -47,16 +60,15 @@ curl.exe -fsSLO https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-（Linux 无 Release，见下「手动安装」。）
-
 两条 URL 指向**固定 tag `kaup-cli-latest`**：脚本由 `kaup-core` 仓 `install/` 目录来，随每个版本
 release 发到本仓；固定 tag 上的那两个由 `maintain-fixed-tag` 在**正式发布**时同步。URL 长期不变
 ——脚本本身**与版本无关**，它默认就从该固定 tag 读 `latest.json`。
 
-脚本拉固定 tag 的 `latest.json` → **校 sha256** → 落 `~/.kaup/bin/kaup`
-（Windows：`%USERPROFILE%\.kaup\bin\kaup.exe`）→ 打印下一步（`~/.kaup/bin/kaup onboard`）。
-它**不做 minisign 验签**：首次安装只信任 TLS + 清单 sha256；后续升级由 `kaup upgrade` 走完整
-minisign 链（见下「验签」）。装前可先 `cat install.sh` 过目。
+The rewritten installer must install the stable launcher at `~/.kaup/bin/kaup`
+(Windows: `%USERPROFILE%\.kaup\bin\kaup.exe`), extract the ZIP into the immutable
+`~/.kaup/versions/<build-id>/` transaction, and only then switch `~/.kaup/current`.
+First installation still relies on TLS plus the signed manifest/ZIP SHA256; it must not claim
+that the installer itself verified a minisign signature.
 
 > ⚠ **固定 tag 尚未创建（截至 2026-10-16）**：`kaup-cli-latest` / `kaup-desktop-latest` 由
 > `maintain-fixed-tag` 在**正式发布**时创建并推进，而本波尚未发过正式版 ⇒ 上面两条 URL
@@ -74,25 +86,11 @@ minisign 链（见下「验签」）。装前可先 `cat install.sh` 过目。
 > 装到该处之外（例如此前文档所示的 `/opt/kaup/kaup` + `/usr/local/bin` 符号链接）会被
 > 判为「不在安装根内」而**拒绝升级**——请用上面的安装脚本重装到安装根。
 
-**手动安装（源码 / Linux 构建产物，或系统级放置；不参与自升级）**：
-
-Linux 不提供 Release（经源码构建：`kaup-core` 仓 `scripts/build-cli.sh`）。手工放置
-（例如此前的系统级 `/opt/kaup` + 符号链接 `/usr/local/bin/kaup`）**不参与自升级**——
-`kaup upgrade` 只替换安装根 `~/.kaup/bin` 内的二进制：
-
-```bash
-wget https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v<ver>/kaup-v<ver>-darwin-arm64
-chmod +x kaup-v<ver>-darwin-arm64
-sudo mv kaup-v<ver>-darwin-arm64 /opt/kaup/kaup
-sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
-```
-
-要参与自升级，请改用上面的安装脚本（落 `~/.kaup/bin`）。
-
-| 平台 | 二进制 | 手动安装路径（不参与自升级） | 后续步骤 |
-|------|--------|----------|----------|
-| macOS（`darwin-arm64`） | `kaup-v<ver>-darwin-arm64` | `/usr/local/bin/kaup` | 首次运行需解除 Gatekeeper 隔离：`sudo xattr -d com.apple.quarantine /opt/kaup/kaup` |
-| Windows（`windows-amd64`） | `kaup-v<ver>-windows-amd64.exe` | `C:\Program Files\kaup\kaup.exe` | 将该目录加入系统 PATH |
+The ZIP is an installation transaction input, not a replacement executable. Do not unpack it
+over `~/.kaup/bin` or move the runtime there manually: upstream transaction and recovery
+semantics require staging, payload-tree verification, the stable launcher, and an atomic
+`current` switch. Historical releases may still contain raw onefile assets and remain available
+for rollback evidence, but they are not the v0.5.3 distribution contract.
 
 ## 升级
 
@@ -102,7 +100,11 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 
 ### CLI
 
-发布版可直接运行 `kaup upgrade`：从固定 tag `kaup-cli-latest` 拉 `latest.json` + `.sig`，minisign 验签通过后替换自身。手动「下载 → 移动 → 建符号链接」三步仍适用于源码 / Linux 构建的产物。
+An existing onefile installation cannot use its old self-updater to replace itself with the
+standalone ZIP. After the installer and runtime children land, run the updated official
+installer exactly once to migrate. Subsequent A-to-B upgrades will use the stable launcher and
+immutable version transaction; `kaup upgrade` will verify the signed manifest and ZIP bytes
+before switching `current`.
 
 ## 验签
 
@@ -119,7 +121,11 @@ sudo ln -s /opt/kaup/kaup /usr/local/bin/kaup
 
 ### CLI
 
-CLI 发布附带 minisign 签名的 `latest.json`（内含各平台 SHA256），`kaup upgrade` 自动验签通过后才替换。IT 手动部署时可据此核对资产完整性；源码构建产物不在 Release 链路内，完整性由构建方负责。
+CLI releases publish a minisign-signed `latest.json`. Each platform entry binds the final ZIP
+SHA256 to the archive's `install.json` build-id and payload-tree digest. Once the runtime child
+lands, `kaup upgrade` will verify the manifest signature and downloaded bytes before changing
+the active version. The ZIP and extracted binaries are intentionally unsigned at the
+OS-publisher layer for v0.5.3; Gatekeeper and SmartScreen warnings remain possible.
 
 ## 仓库维护
 
@@ -130,4 +136,4 @@ CLI 发布附带 minisign 签名的 `latest.json`（内含各平台 SHA256），
 
 ## License
 
-本仓及 Releases 分发的所有产物均为 Dalian Kaup Technology Co., Ltd. 的专有软件，版权归其所有，详见 [LICENSE](./LICENSE)。第三方依赖归因已内嵌于各产物（CLI exe / desktop 安装包）中。
+本仓及 Releases 分发的所有产物均为 Dalian Kaup Technology Co., Ltd. 的专有软件，版权归其所有，详见 [LICENSE](./LICENSE)。第三方依赖归因已内嵌于各产物（CLI standalone ZIP / desktop 安装包）中。

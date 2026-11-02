@@ -25,7 +25,7 @@ kaup 是**四仓项目**，四仓 clone 到同一父目录（如 `~/workspace/ka
 | `kaup-design` | 设计 SSOT：spec / plan / ADR / runbook | Markdown |
 | `kaup-core` | 后端 Python monorepo（api-proxy / kaup-platform / kaup-platform-internal / kaup-leads / kaup-profiling / kaup-enrich / kaup-cli / kaup-common / kaup-hermes-gate） | Python 3.13 · uv · FastAPI · LangGraph · alembic |
 | `kaup-frontend` | 桌面端 Thin Client + 设计系统 | Tauri v2 · Vue 3 + Vite · pnpm + Turborepo |
-| `kaup-artifacts`（本仓） | 发版产物分发（desktop installer / CLI binary） | GitHub Releases |
+| `kaup-artifacts`（本仓） | 发版产物分发（desktop installer / CLI standalone ZIP） | GitHub Releases |
 
 **口径（定死）**：**四仓** = design / core / frontend / artifacts 四个 git 仓；**日常开发提交通常只落三仓**
 （design / core / frontend）——**本仓只托管 GitHub Releases 产物，几乎不产生提交**。
