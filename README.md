@@ -37,38 +37,34 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI standalone ZIP 
 
 ### CLI
 
-> **Transitional status (v0.5.3):** the current `install.sh` / `install.ps1` still implement
-> the retired raw-onefile bootstrap. The release workflow fails closed while either script
-> carries its `TRANSITIONAL:` marker, so these scripts must not be used to publish or install
-> a production v0.5.3 standalone release. The standalone clean-bootstrap installer is owned by
-> the installer child and must land first.
-
-The historical fixed-tag commands remain the eventual stable entry point once that installer
-child lands:
+The installers are the primary customer entry point. They consume the same
+standalone ZIP as `kaup upgrade`; the ZIP is an advanced/offline asset, not a
+program to run directly.
 
 macOS：
 
 ```bash
-curl -fsSLO https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-latest/install.sh
-sh install.sh
+curl -fsSL https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-latest/install.sh | sh
 ```
 
 Windows（PowerShell）：
 
 ```powershell
-curl.exe -fsSLO https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-latest/install.ps1
-powershell -ExecutionPolicy Bypass -File install.ps1
+irm https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-latest/install.ps1 | iex
 ```
 
 两条 URL 指向**固定 tag `kaup-cli-latest`**：脚本由 `kaup-core` 仓 `install/` 目录来，随每个版本
 release 发到本仓；固定 tag 上的那两个由 `maintain-fixed-tag` 在**正式发布**时同步。URL 长期不变
 ——脚本本身**与版本无关**，它默认就从该固定 tag 读 `latest.json`。
 
-The rewritten installer must install the stable launcher at `~/.kaup/bin/kaup`
-(Windows: `%USERPROFILE%\.kaup\bin\kaup.exe`), extract the ZIP into the immutable
-`~/.kaup/versions/<build-id>/` transaction, and only then switch `~/.kaup/current`.
-First installation still relies on TLS plus the signed manifest/ZIP SHA256; it must not claim
-that the installer itself verified a minisign signature.
+The installer reads the manifest over TLS, validates its schema, verifies the
+ZIP SHA256 and payload tree, extracts into `~/.kaup/versions/<build-id>/`,
+installs the stable launcher at `~/.kaup/bin/kaup` (Windows:
+`%USERPROFILE%\.kaup\bin\kaup.exe`), and writes `~/.kaup/current` plus
+`install-state.json`. First installation trusts TLS plus the manifest-provided
+ZIP SHA256; it does not claim that the installer verified a minisign signature.
+If a usable stable launcher already exists, the installer delegates to
+`kaup upgrade --all`.
 
 > ⚠ **固定 tag 尚未创建（截至 2026-10-16）**：`kaup-cli-latest` / `kaup-desktop-latest` 由
 > `maintain-fixed-tag` 在**正式发布**时创建并推进，而本波尚未发过正式版 ⇒ 上面两条 URL
@@ -82,9 +78,11 @@ that the installer itself verified a minisign signature.
 > KAUP_INSTALL_BASE_URL="https://github.com/kaup-ai/kaup-artifacts/releases/download/$TAG" sh install.sh
 > ```
 
-> ⚠ 自升级（`kaup upgrade`）**只替换 `~/.kaup/bin`（= `$KAUP_HOME/bin`）内的二进制**。
-> 装到该处之外（例如此前文档所示的 `/opt/kaup/kaup` + `/usr/local/bin` 符号链接）会被
-> 判为「不在安装根内」而**拒绝升级**——请用上面的安装脚本重装到安装根。
+> ⚠ 自升级（`kaup upgrade`）只能从 `~/.kaup/bin`（= `$KAUP_HOME/bin`）内的稳定
+> launcher 发起，并原子切换 `~/.kaup/current` 指向的 immutable version；普通升级不会
+> 替换运行中的稳定 launcher。装到该处之外（例如此前文档所示的 `/opt/kaup/kaup` +
+> `/usr/local/bin` 符号链接）会被判为「不在安装根内」而**拒绝升级**——请用上面的
+> 安装脚本重装到安装根。
 
 The ZIP is an installation transaction input, not a replacement executable. Do not unpack it
 over `~/.kaup/bin` or move the runtime there manually: upstream transaction and recovery
@@ -100,11 +98,15 @@ for rollback evidence, but they are not the v0.5.3 distribution contract.
 
 ### CLI
 
-An existing onefile installation cannot use its old self-updater to replace itself with the
-standalone ZIP. After the installer and runtime children land, run the updated official
-installer exactly once to migrate. Subsequent A-to-B upgrades will use the stable launcher and
-immutable version transaction; `kaup upgrade` will verify the signed manifest and ZIP bytes
-before switching `current`.
+An existing onefile installation cannot migrate itself or be overwritten by
+the standalone installer. The installer treats the old `bin/kaup[.exe]` as an
+unproven launcher and fails closed. A supervised migration must stop the old
+daemons and remove or relocate that legacy entry before running the installer;
+a single installer rerun does not perform an in-place onefile migration. Later
+runs detect the resulting stable launcher and delegate to the CLI transaction.
+Subsequent A-to-B upgrades use the stable launcher and immutable version
+transaction; `kaup upgrade` verifies the signed manifest and ZIP bytes before
+switching `current`.
 
 ## 验签
 
@@ -121,11 +123,12 @@ before switching `current`.
 
 ### CLI
 
-CLI releases publish a minisign-signed `latest.json`. Each platform entry binds the final ZIP
-SHA256 to the archive's `install.json` build-id and payload-tree digest. Once the runtime child
-lands, `kaup upgrade` will verify the manifest signature and downloaded bytes before changing
-the active version. The ZIP and extracted binaries are intentionally unsigned at the
-OS-publisher layer for v0.5.3; Gatekeeper and SmartScreen warnings remain possible.
+CLI releases publish a minisign-signed `latest.json`. Each platform entry binds
+the final ZIP SHA256 to the archive's `install.json` build-id and payload-tree
+digest. `kaup upgrade` verifies the manifest signature and downloaded bytes
+before changing the active version. The ZIP and extracted binaries are
+intentionally unsigned at the OS-publisher layer for v0.5.3; Gatekeeper and
+SmartScreen warnings remain possible.
 
 ## 仓库维护
 
