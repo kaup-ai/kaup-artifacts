@@ -23,6 +23,9 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI standalone ZIP 
 - 产物（同 D12 裁剪）：`kaup-v<version>-{darwin-arm64,windows-amd64}.zip`。
   ZIP 内含 Nuitka standalone runtime、stable launcher 与 `install.json`；不再发布可单独执行的
   raw onefile 资产。
+- 同版本另含 `install.sh`、`install.ps1`、`latest.json` 与 `latest.json.sig`；稳定无版本
+  CDN 副本位于 `channels/cli/install.{sh,ps1}`，不可变审计副本位于
+  `releases/cli/<version>/install.{sh,ps1}`。
 - Linux 需求不在 Release 提供，且 v0.5.3 standalone 契约只覆盖 macOS arm64 与 Windows amd64。
 - 同时发布 `latest.json` + `latest.json.sig`。平台条目除 `url`/`sha256` 外还冻结
   `artifact_kind`、`layout_version`、`build_id`、`payload_tree_sha256` 与
@@ -33,7 +36,12 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI standalone ZIP 
 
 ### Desktop
 
-前往 [Releases 页](https://github.com/kaup-ai/kaup-artifacts/releases?q=kaup-desktop) 下载与本机平台匹配的安装包，按系统提示安装即可。首次启动后，客户端会按内置的 updater 公钥定期检查本仓 Releases。
+CDN 是 Desktop 的公开主下载源；GitHub Releases 是独立镜像与 fallback。
+平台安装包的当前直链、大小与 SHA256 以
+[`channels/downloads.json`](https://downloads.kaup-ai.com/channels/downloads.json)
+为准。也可以前往
+[Releases 页](https://github.com/kaup-ai/kaup-artifacts/releases?q=kaup-desktop)
+从 GitHub 镜像下载。安装包继续使用现有 Tauri updater 签名链。
 
 ### CLI
 
@@ -41,28 +49,89 @@ The installers are the primary customer entry point. They consume the same
 standalone ZIP as `kaup upgrade`; the ZIP is an advanced/offline asset, not a
 program to run directly.
 
-macOS：
+macOS convenience command:
 
 ```bash
-curl -fsSL https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-latest/install.sh | sh
+curl -fsSL https://downloads.kaup-ai.com/channels/cli/install.sh | sh
 ```
 
-Windows（PowerShell）：
+Windows PowerShell (download and execute by file, preserving process exit
+semantics):
 
 ```powershell
-irm https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-latest/install.ps1 | iex
+Invoke-WebRequest https://downloads.kaup-ai.com/channels/cli/install.ps1 -OutFile install.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-两条 URL 指向**固定 tag `kaup-cli-latest`**：脚本由 `kaup-core` 仓 `install/` 目录来，随每个版本
-release 发到本仓；固定 tag 上的那两个由 `maintain-fixed-tag` 在**正式发布**时同步。URL 长期不变
-——脚本本身**与版本无关**，它默认就从该固定 tag 读 `latest.json`。
+`ExecutionPolicy Bypass` is process-scoped so the downloaded script can run on
+a fresh Windows client whose policy is `Restricted`; it does not change the
+machine policy.
 
-The installer reads the manifest over TLS, validates its schema, verifies the
-ZIP SHA256 and payload tree, extracts into `~/.kaup/versions/<build-id>/`,
+`channels/cli/` is a short-TTL CDN prefix. The stable scripts are overwritten
+only from the exact versioned bytes at
+`releases/cli/<version>/install.{sh,ps1}`. Do not use the CDN root: it has
+different cache semantics and is reserved for a future human entry page.
+
+For a download -> verify -> run path, compare the stable object with the
+versioned GitHub-release copy and with the published checksum:
+
+```bash
+VERSION=<version>
+BASE=https://downloads.kaup-ai.com
+GH=https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v$VERSION
+curl -fsSLO "$BASE/channels/cli/install.sh"
+curl -fsSL "$GH/install.sh" -o install.sh.github
+curl -fsSL "$BASE/checksums/$VERSION/cli/SHA256SUMS" -o SHA256SUMS
+expected="$(shasum -a 256 install.sh.github | awk '{print $1}')"
+actual="$(shasum -a 256 install.sh | awk '{print $1}')"
+test "$expected" = "$actual" || { echo "installer sha256 mismatch" >&2; exit 1; }
+test "$expected" = "$(awk '$2 == "install.sh" {print $1}' SHA256SUMS)" ||
+  { echo "published checksum mismatch" >&2; exit 1; }
+sh ./install.sh
+```
+
+PowerShell equivalent:
+
+```powershell
+$Version = '<version>'
+$Base = 'https://downloads.kaup-ai.com'
+$Gh = "https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-v$Version"
+Invoke-WebRequest "$Base/channels/cli/install.ps1" -OutFile install.ps1
+Invoke-WebRequest "$Gh/install.ps1" -OutFile install.ps1.github
+Invoke-WebRequest "$Base/checksums/$Version/cli/SHA256SUMS" -OutFile SHA256SUMS
+$expected = (Get-FileHash .\install.ps1.github -Algorithm SHA256).Hash.ToLowerInvariant()
+$actual = (Get-FileHash .\install.ps1 -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($expected -cne $actual) { throw 'installer sha256 mismatch' }
+$published = ((Select-String '  install\.ps1$' SHA256SUMS).Line -split '\s+')[0]
+if ($expected -cne $published) { throw 'published checksum mismatch' }
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+The versioned `SHA256SUMS` contains both platform ZIPs and both installers.
+The same installer hashes are published in each CLI GitHub release note.
+`irm | iex` remains possible, but pipes input into the interpreter and can lose
+the script process exit code, so the documented primary Windows form uses
+`-File`.
+
+The installer defaults to
+`https://downloads.kaup-ai.com/channels/cli/latest.json`. The GitHub fixed-tag
+scripts remain a transport/audit fallback; to force GitHub-only data access:
+
+```bash
+KAUP_INSTALL_BASE_URL=https://github.com/kaup-ai/kaup-artifacts/releases/download/kaup-cli-latest \
+  sh install.sh
+```
+
+The installer reads either the CDN signature envelope or raw GitHub manifest
+over TLS. For the envelope it validates the exact outer schema, strictly
+base64-decodes the bounded inner manifest, and applies the normal manifest
+schema; it does not treat envelope fields as manifest fields. It then verifies
+the ZIP SHA256 and payload tree, extracts into `~/.kaup/versions/<build-id>/`,
 installs the stable launcher at `~/.kaup/bin/kaup` (Windows:
 `%USERPROFILE%\.kaup\bin\kaup.exe`), and writes `~/.kaup/current` plus
-`install-state.json`. First installation trusts TLS plus the manifest-provided
-ZIP SHA256; it does not claim that the installer verified a minisign signature.
+`install-state.json`. First installation trusts TLS plus the inner
+manifest-provided ZIP SHA256; decoding the envelope does not verify its
+minisign signature, and the installer does not claim that it did.
 If a usable stable launcher already exists, the installer delegates to
 `kaup upgrade --all`.
 
