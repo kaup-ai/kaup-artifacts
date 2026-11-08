@@ -135,14 +135,16 @@ minisign signature, and the installer does not claim that it did.
 If a usable stable launcher already exists, the installer delegates to
 `kaup upgrade --all`.
 
-> ⚠ **固定 tag 尚未创建（截至 2026-10-16）**：`kaup-cli-latest` / `kaup-desktop-latest` 由
-> `maintain-fixed-tag` 在**正式发布**时创建并推进，而本波尚未发过正式版 ⇒ 上面两条 URL
-> **今天会 404**。首次正式发布后即生效。
+> ✅ **固定 tag 已创建（2026-10-31 起）**：`kaup-cli-latest` / `kaup-desktop-latest` 由
+> `maintain-fixed-tag` 维护并随正式版推进；`v0.5.1`（2026-10-31）与 `v0.5.2`（2026-11-02）
+> 已发布，上面的固定 tag URL 现已可用。
 >
-> 在此之前要装 / 验**预发布版**，请取**版本 tag** 的脚本并显式指定取数点：
+> ⚠ 截至 2026-11-08：CDN 的 `channels/downloads.json` 已上线，但
+> `channels/cli/install.{sh,ps1}` **尚未发布**（404；由 oss-installer 发布波次上线）。
+> CDN 安装命令生效前，请改用固定 tag / 版本 tag 的 GitHub 路径安装：
 >
 > ```bash
-> TAG=kaup-cli-v0.5.0-rc.8
+> TAG=kaup-cli-v0.5.2
 > curl -fsSLO "https://github.com/kaup-ai/kaup-artifacts/releases/download/$TAG/install.sh"
 > KAUP_INSTALL_BASE_URL="https://github.com/kaup-ai/kaup-artifacts/releases/download/$TAG" sh install.sh
 > ```
