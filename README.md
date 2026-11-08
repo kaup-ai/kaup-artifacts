@@ -136,18 +136,13 @@ If a usable stable launcher already exists, the installer delegates to
 `kaup upgrade --all`.
 
 > ✅ **固定 tag 已创建（2026-10-31 起）**：`kaup-cli-latest` / `kaup-desktop-latest` 由
-> `maintain-fixed-tag` 维护并随正式版推进；`v0.5.1`（2026-10-31）与 `v0.5.2`（2026-11-02）
-> 已发布，上面的固定 tag URL 现已可用。
+> `maintain-fixed-tag` 维护并随正式版推进；`v0.5.1`（2026-10-31）、`v0.5.2`
+> （2026-11-02）、`v0.5.3`（2026-11-08）与 `v0.5.6`（2026-11-09）均已发布，
+> 上面的固定 tag URL 现已可用。
 >
-> ⚠ 截至 2026-11-08：CDN 的 `channels/downloads.json` 已上线，但
-> `channels/cli/install.{sh,ps1}` **尚未发布**（404；由 oss-installer 发布波次上线）。
-> CDN 安装命令生效前，请改用固定 tag / 版本 tag 的 GitHub 路径安装：
->
-> ```bash
-> TAG=kaup-cli-v0.5.2
-> curl -fsSLO "https://github.com/kaup-ai/kaup-artifacts/releases/download/$TAG/install.sh"
-> KAUP_INSTALL_BASE_URL="https://github.com/kaup-ai/kaup-artifacts/releases/download/$TAG" sh install.sh
-> ```
+> 从 `v0.5.3` 起，`channels/cli/install.{sh,ps1}` 与
+> `channels/cli/latest.json` 已作为正式 CDN 安装面发布。上面的稳定 CDN 命令可直接使用；
+> GitHub 固定 tag / 版本 tag 保留为独立传输、审计和逃生路径。
 
 > ⚠ 自升级（`kaup upgrade`）只能从 `~/.kaup/bin`（= `$KAUP_HOME/bin`）内的稳定
 > launcher 发起，并原子切换 `~/.kaup/current` 指向的 immutable version；普通升级不会
