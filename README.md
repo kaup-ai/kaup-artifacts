@@ -26,7 +26,7 @@ kaup 官方更新源 —— 提供 kaup desktop 安装包与 CLI standalone ZIP 
 - 同版本另含 `install.sh`、`install.ps1`、`latest.json` 与 `latest.json.sig`；稳定无版本
   CDN 副本位于 `channels/cli/install.{sh,ps1}`，不可变审计副本位于
   `releases/cli/<version>/install.{sh,ps1}`。
-- Linux 需求不在 Release 提供，且 v0.5.3 standalone 契约只覆盖 macOS arm64 与 Windows amd64。
+- Linux 需求不在 Release 提供；当前 standalone 契约只覆盖 macOS arm64 与 Windows amd64。
 - 同时发布 `latest.json` + `latest.json.sig`。平台条目除 `url`/`sha256` 外还冻结
   `artifact_kind`、`layout_version`、`build_id`、`payload_tree_sha256` 与
   `launcher_protocol_version`；**无自动后台更新**，升级由 IT / 用户显式触发；
@@ -192,8 +192,8 @@ switching `current`.
 CLI releases publish a minisign-signed `latest.json`. Each platform entry binds
 the final ZIP SHA256 to the archive's `install.json` build-id and payload-tree
 digest. `kaup upgrade` verifies the manifest signature and downloaded bytes
-before changing the active version. The ZIP and extracted binaries are
-intentionally unsigned at the OS-publisher layer for v0.5.3; Gatekeeper and
+before changing the active version. Current standalone ZIPs and extracted
+binaries are intentionally unsigned at the OS-publisher layer; Gatekeeper and
 SmartScreen warnings remain possible.
 
 ## 仓库维护
