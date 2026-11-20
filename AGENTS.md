@@ -23,7 +23,7 @@ kaup 是**五仓项目**，五仓 clone 到同一父目录（如 `~/workspace/ka
 | 仓 | 角色 | 技术栈 |
 |----|------|--------|
 | `kaup-design` | 设计 SSOT：spec / plan / ADR / runbook | Markdown |
-| `kaup-core` | 后端 Python monorepo（api-proxy / egress-proxy / kaup-platform / kaup-platform-internal / kaup-leads / kaup-profiling / kaup-enrich / kaup-cli / kaupctl / kaup-common / kaup-hermes-gate） | Python 3.13 · uv · FastAPI · LangGraph · alembic |
+| `kaup-core` | 后端 Python monorepo（api-proxy / egress-proxy / kaup-llm-gateway / kaup-platform / kaup-platform-internal / kaup-leads / kaup-profiling / kaup-enrich / kaup-cli / kaupctl / kaup-common / kaup-hermes-gate） | Python 3.13 · uv · FastAPI · LangGraph · alembic |
 | `kaup-frontend` | 桌面端 Thin Client + 设计系统 | Tauri v2 · Vue 3 + Vite · pnpm + Turborepo |
 | `kaup-artifacts`（本仓） | 发版产物分发（desktop installer / CLI installers（+ standalone ZIP）） | GitHub Releases |
 | `kaup-ai-website` | 官网（营销站 / 内容站 / 下载与安装入口） | Node 26 · Nuxt 4 · Nuxt UI · Nuxt Content · Tailwind 4 · pnpm |
